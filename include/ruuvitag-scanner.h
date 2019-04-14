@@ -4,6 +4,8 @@
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
 
+#include "ruuvitag-parser.h"
+
 
 namespace RuuviTagScanner {
   void init();

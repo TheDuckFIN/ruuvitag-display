@@ -9,11 +9,31 @@ namespace RuuviTagScanner {
 }
 
 void RuuviTagScanner::AdvertisedDeviceCallback::onResult(BLEAdvertisedDevice advertisedDevice) {
-  byte* mData = (byte*)advertisedDevice.getManufacturerData().data();
+  uint8_t* mData = (uint8_t*)advertisedDevice.getManufacturerData().data();
+
+  // Funny thing: advertisedDevice.getAddress().toString() changes the content
+  // of mData. Why? I don't know... Therefore, it's only called after we're
+  // already done with parsing manufacturer data :) Fought with this issue
+  // for over 3 hours before realizing what was happening.
+
+  // To measure task stack usage, uncomment below.
+  // Serial.println(uxTaskGetStackHighWaterMark(scanTaskHandle));
 
   // Check for RuuviTag manufacturer ID
   if (mData[0] == 0x99 && mData[1] == 0x04) {
-    Serial.printf("RuuviTag: %s \n", advertisedDevice.toString().c_str());
+
+    // Protocol version 3
+    if (mData[2] == 0x03) {
+      RuuviTagParser::parseV3(mData);
+      const char* address = advertisedDevice.getAddress().toString().c_str();
+      Serial.printf("Found RuuviTag %s with protocol v3\n", address);
+    } else {
+      // mData gets screwed up after we call address.toString().c_str(), therefore
+      // we have to get the protocol version safe before calling it :)
+      char version = mData[2];
+      const char* address = advertisedDevice.getAddress().toString().c_str();
+      Serial.printf("Found RuuviTag %s with unsupported protocol v%i\n", address, version);
+    }
   }
 }
 
